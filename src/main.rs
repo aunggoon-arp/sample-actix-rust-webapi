@@ -3,12 +3,21 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde;
 
+use std::fs as stdfs;
 use std::time::Duration;
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer, http::header, middleware::Logger};
-use controller::{role_controller, user_controller};
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use actix_files as fs;
+use actix_web::{http::header, middleware::Logger, web, App, HttpServer};
+use controller::{
+    admin_controller, auth_controller, file_controller, post_controller, role_controller,
+    root_controller, user_controller,
+};
+use dotenv::dotenv;
+use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
+use utils::{swagger_docs::ApiDoc, web_socket::ws_index};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod config;
 mod controller;
@@ -19,15 +28,16 @@ mod query;
 mod service;
 mod utils;
 
-pub struct PostgresState {
-    db: PgPool,
+pub struct MySqlState {
+    pub db: MySqlPool,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     let origins = std::env::var("ORIGINS").expect("ORIGINS must be set");
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = match PgPoolOptions::new()
+    let pool = match MySqlPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
         .await
@@ -41,6 +51,23 @@ async fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
+
+    let dir_creator_image = stdfs::create_dir("./upload/image");
+    match dir_creator_image {
+        Ok(()) => {}
+        Err(_err) => {
+            println!("Skip create directory /upload/image, directory is exist.")
+        }
+    }
+
+    let dir_creator_file = stdfs::create_dir("./upload/file");
+    match dir_creator_file {
+        Ok(()) => {}
+        Err(_err) => {
+            println!("Skip create directory /upload/file, directory is exist.")
+        }
+    }
+    let openapi = ApiDoc::openapi();
     HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin(&origins)
@@ -52,15 +79,26 @@ async fn main() -> std::io::Result<()> {
             ])
             .supports_credentials();
         App::new()
-            .app_data(web::Data::new(PostgresState { db: pool.clone() }))
-            .configure(role_controller::role_route_config)
-            .configure(user_controller::user_route_config)
+            .app_data(web::Data::new(MySqlState { db: pool.clone() }))
+            .route("/ws/", web::get().to(ws_index))
+            .service(
+                web::scope("/api")
+                    .configure(root_controller::root_route_config)
+                    .configure(admin_controller::admin_route_config)
+                    .configure(auth_controller::auth_route_config)
+                    .configure(file_controller::file_route_config)
+                    .configure(post_controller::post_route_config)
+                    .configure(role_controller::role_route_config)
+                    .configure(user_controller::user_route_config),
+            )
+            .service(fs::Files::new("/upload", "./upload").use_last_modified(true))
+            .service(SwaggerUi::new("/docs/{_:.*}").url("/api-docs/openapi.json", openapi.clone()))
             .wrap(cors)
             .wrap(Logger::default())
     })
     .client_request_timeout(Duration::from_secs(15))
     .workers(2)
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

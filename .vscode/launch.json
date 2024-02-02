@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'sample-actix-rust-webapi'",
+            "name": "Debug executable 'sample_actix_rusapi'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=sample-actix-rust-webapi",
-                    "--package=sample-actix-rust-webapi"
+                    "--bin=sample_actix_rusapi",
+                    "--package=sample_actix_rusapi"
                 ],
                 "filter": {
-                    "name": "sample-actix-rust-webapi",
+                    "name": "sample_actix_rusapi",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'sample-actix-rust-webapi'",
+            "name": "Debug unit tests in executable 'sample_actix_rusapi'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=sample-actix-rust-webapi",
-                    "--package=sample-actix-rust-webapi"
+                    "--bin=sample_actix_rusapi",
+                    "--package=sample_actix_rusapi"
                 ],
                 "filter": {
-                    "name": "sample-actix-rust-webapi",
+                    "name": "sample_actix_rusapi",
                     "kind": "bin"
                 }
             },

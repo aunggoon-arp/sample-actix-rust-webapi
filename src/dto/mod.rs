@@ -1,3 +1,4 @@
-pub mod user;
 pub mod auth;
+pub mod custom;
 pub mod role;
+pub mod user;

@@ -29,3 +29,22 @@ pub struct CreateRoleData {
     pub role_code: String,
 }
 
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateRoleInput {
+    pub id: i32,
+    #[validate(length(min = 3))]
+    pub name_th: String,
+    #[validate(length(min = 3))]
+    pub name_en: String,
+    #[validate(length(min = 3))]
+    pub role_code: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateRoleData {
+    pub id: i32,
+    pub name_th: String,
+    pub name_en: String,
+    pub role_code: String,
+}
+

@@ -1,11 +1,9 @@
-use actix_web::{http::StatusCode, web::Json};
-use serde_json::{json, Value};
+use actix_web::HttpResponse;
+use serde_json::json;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {
-    #[error(transparent)]
-    BcryptError(#[from] bcrypt::BcryptError),
+pub enum CustomError {
     #[error(transparent)]
     SqlxError(#[from] sqlx::Error),
     #[error(transparent)]
@@ -18,23 +16,23 @@ pub enum Error {
     WrongPassword,
     #[error("Email is already taken")]
     DuplicateUserEmail,
-    #[error("Name is already taken")]
-    DuplicateUserName,
     #[error("Search data not found")]
     NotFoundData,
+    #[error("Resize file error")]
+    ResizeImageError,
 }
-pub type Result<T> = std::result::Result<T, Error>;
-pub type ApiError = (StatusCode, Json<Value>);
-pub type ApiResult<T> = std::result::Result<T, ApiError>;
+pub type ApiResult<T> = std::result::Result<T, CustomError>;
+pub type ApiError = HttpResponse;
 
-impl From<Error> for ApiError {
-    fn from(err: Error) -> Self {
-        let status = match err {
-            Error::WrongCredentials => StatusCode::UNAUTHORIZED,
-            Error::ValidationError(_) => StatusCode::BAD_REQUEST,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+impl From<CustomError> for ApiError {
+    fn from(err: CustomError) -> Self {
         let payload = json!({"message": err.to_string()});
-        (status, Json(payload))
+        let status = match err {
+            CustomError::WrongCredentials => HttpResponse::Unauthorized().json(payload),
+            CustomError::ValidationError(_) => HttpResponse::BadRequest().json(payload),
+            CustomError::NotFoundData => HttpResponse::NoContent().json(payload),
+            _ => HttpResponse::InternalServerError().json(actix_web::web::Json(payload))
+        };
+        status
     }
 }

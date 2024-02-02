@@ -1,12 +1,12 @@
-# Actix JWT example
+# Actix JWT Actor Stock
 
-This repository provides an example of:
+This repository provides of:
 
 - Actix REST API
 - Actix CORS config
 - Error handling
 - JWT authentication
-- Interaction with the database
+- Interaction with the MySql database
 - Password encryption
 - Payload validation
 
@@ -20,8 +20,6 @@ This repository provides an example of:
 - edit .env
 - `cargo run --release` or `debug with vscode`
 
-## Api
+## Docker build
 
-- POST `/register` - required fields: `name, email, password`, returns bearer token
-- POST `/login` - required fields: `email, password`, returns bearer token
-- GET `/` - returns home
+- `docker buildx build . -t aimdevgroup/sample-actix-rust-api  --platform linux/amd64 --push`

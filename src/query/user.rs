@@ -1,61 +1,80 @@
 use chrono::Local;
-use sqlx::PgPool;
+use sqlx::MySqlPool;
 
 use crate::{
-    error::Result,
-    dto::user::{CreateUserData, UpdateUserData},
-    entity::user::User
+    dto::user::{CreateUserData, UpdateUserData, UserLoginData},
+    entity::user::User,
+    error::ApiResult,
 };
 
 impl User {
-    pub async fn find_user_by_id(id: i32, pool: &PgPool) -> Result<Option<User>> {
-        let sql = format!("SELECT * FROM {} WHERE id = $1 LIMIT 1", User::TABLE);
+    pub async fn find_user_by_id(id: i32, pool: &MySqlPool) -> ApiResult<Option<User>> {
+        let sql = format!("SELECT * FROM {} WHERE id = ? LIMIT 1", User::TABLE);
         Ok(sqlx::query_as(&sql).bind(id).fetch_optional(pool).await?)
     }
 
-    pub async fn find_user_by_email(email: &str, pool: &PgPool) -> Result<Option<User>> {
-        let sql = format!("SELECT * FROM {} WHERE email = $1 LIMIT 1", User::TABLE);
-        Ok(sqlx::query_as(&sql).bind(email).fetch_optional(pool).await?)
-    }
-
-    pub async fn find_user_by_name(name: &str, pool: &PgPool) -> Result<Option<User>> {
-        let sql = format!("SELECT * FROM {} WHERE name = $1 LIMIT 1", User::TABLE);
-        Ok(sqlx::query_as(&sql).bind(name).fetch_optional(pool).await?)
-    }
-
-    pub async fn create_user(data: CreateUserData, pool: &PgPool) -> Result<User> {
+    pub async fn find_user_login(data: UserLoginData, pool: &MySqlPool) -> ApiResult<Option<User>> {
         let sql = format!(
-            "
-            INSERT INTO {} (name, email, password, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING *
-            ",
+            "SELECT * FROM {} WHERE email = ? AND password_hash = ? LIMIT 1",
             User::TABLE
         );
         Ok(sqlx::query_as(&sql)
-            .bind(data.name)
             .bind(data.email)
             .bind(data.password)
-            .bind(Local::now())
-            .bind(Local::now())
-            .fetch_one(pool)
+            .fetch_optional(pool)
             .await?)
     }
 
-    pub async fn update_user(data: UpdateUserData, pool: &PgPool) -> Result<User> {
+    pub async fn find_user_by_email(email: &str, pool: &MySqlPool) -> ApiResult<Option<User>> {
+        let sql = format!("SELECT * FROM {} WHERE email = ? LIMIT 1", User::TABLE);
+        Ok(sqlx::query_as(&sql)
+            .bind(email)
+            .fetch_optional(pool)
+            .await?)
+    }
+
+    pub async fn create_user(data: CreateUserData, pool: &MySqlPool) -> ApiResult<u64> {
+        let sql = format!(
+            "
+            INSERT INTO {} (firstname, lastname, role_id, profile_image, email, password_hash, point, follower, following, is_deleted, is_confirmed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ",
+            User::TABLE
+        );
+        let excutor = sqlx::query(&sql)
+            .bind(data.firstname)
+            .bind(data.lastname)
+            .bind(1)
+            .bind("no_profile.png")
+            .bind(data.email)
+            .bind(data.password)
+            .bind(0)
+            .bind(0)
+            .bind(0)
+            .bind(false)
+            .bind(false)
+            .bind(Local::now())
+            .execute(pool)
+            .await?;
+        Ok(excutor.rows_affected())
+    }
+
+    pub async fn update_user(data: UpdateUserData, pool: &MySqlPool) -> ApiResult<u64> {
         let sql = format!(
             "
             UPDATE {}
-            SET name = $1, email = $2, updated_at = $3)
-            RETURNING *
+            SET firstname = ?, lastname = ?, updated_at = ?
+            WHERE id = ?
             ",
             User::TABLE
         );
-        Ok(sqlx::query_as(&sql)
-            .bind(data.name)
-            .bind(data.email)
+        let excutor = sqlx::query(&sql)
+            .bind(data.firstname)
+            .bind(data.lastname)
             .bind(Local::now())
-            .fetch_one(pool)
-            .await?)
+            .bind(data.id)
+            .execute(pool)
+            .await?;
+        Ok(excutor.rows_affected())
     }
 }
