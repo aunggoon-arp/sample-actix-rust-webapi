@@ -1,4 +1,4 @@
-# Actix JWT Actor Stock
+# Actix JWT
 
 This repository provides of:
 
